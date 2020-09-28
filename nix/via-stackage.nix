@@ -50,12 +50,20 @@ let
   hsPkgs = (pkgs.haskell-nix.mkStackPkgSet {
     stack-pkgs = butcher-plan;
     pkg-def-extras = pkg-def-extras;
-    modules = pkgs.lib.singleton (pkgs.haskell-nix.mkCacheModule generatedCache);
+    modules = [ (pkgs.haskell-nix.mkCacheModule generatedCache)
+                { packages.butcher.flags.butcher-examples = true; }
+              ];
   }).config.hsPkgs;
-in {
+in rec {
   inherit butcher-nix butcher-plan hsPkgs pkgs;
   inherit (hsPkgs) butcher;
   inherit (hsPkgs.butcher) checks;
+  allComponents = pkgs.linkFarm
+    "allComponents"
+    (builtins.map
+      (x: { name = x.name; path = x; })
+      (pkgs.haskell-nix.haskellLib.getAllComponents butcher));
+
   shell = hsPkgs.shellFor {
     # Include only the *local* packages of your project.
     packages = ps: with ps; [

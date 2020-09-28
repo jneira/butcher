@@ -1,3 +1,4 @@
+#!/bin/bash
 
 OUTDIR="ci-out"
 SUMMARY="$OUTDIR/0-summary"
@@ -16,8 +17,10 @@ function build-one {
   # nix-build --no-out-link nix/all.nix -A "\"$ATTRPATH\".butcher.components.tests"\
   #   2> >(tee "$OUTDIR/$ATTRPATH-2-build-test.txt" >&2)
   # (($? == 0)) || { echo "$ATTRPATH: build test failed" >> "$SUMMARY"; return 1; }
-  OUT=$(nix-build -o "$OUTDIR/$ATTRPATH-test-result.txt" nix/all.nix -A "\"$ATTRPATH\".butcher.checks.tests"\
-    2> >(tee "$OUTDIR/$ATTRPATH-build.txt" >&2))
+  nix-build -o "$OUTDIR/$ATTRPATH-build" nix/all.nix -A "\"$ATTRPATH\".allComponents"\
+    2> >(tee "$OUTDIR/$ATTRPATH-build.txt" >&2)
+  (($? == 0)) || { echo "$ATTRPATH: all-component build failed" >> "$SUMMARY"; return 1; }
+  nix-build -o "$OUTDIR/$ATTRPATH-test-result.txt" nix/all.nix -A "\"$ATTRPATH\".butcher.checks.tests"
   (($? == 0)) || { echo "$ATTRPATH: run test failed" >> "$SUMMARY"; return 1; }
   echo "$ATTRPATH: $(grep examples "$OUTDIR/$ATTRPATH-test-result.txt")" >> "$SUMMARY"
 }

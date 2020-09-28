@@ -11,7 +11,8 @@
 let
   butcher-nix = pkgs.haskell-nix.callCabalProjectToNix {
     src = cleanedSource;
-    inherit index-state index-sha256 plan-sha256 materialized configureArgs;
+    inherit index-state index-sha256 plan-sha256 materialized;
+    configureArgs = configureArgs + " -fbutcher-examples";
     # ghc = pkgs.haskell-nix.compiler.${ghc-ver};
     compiler-nix-name = ghc-ver;
   };
@@ -26,12 +27,20 @@ in rec {
                 pkg-def-extras = pkg-def-extras;
                 modules = [ 
                   { ghc.package = pkgs.haskell-nix.compiler.${ghc-ver}; }
+                  #  (pkgs.haskell-nix.mkCacheModule generatedCache)
+                  { packages.butcher.flags.butcher-examples = true; }
                 ];
               };
     in pkg-set.config.hsPkgs;
 
   inherit (hsPkgs) butcher;
   inherit (hsPkgs.butcher) checks;
+  allComponents = pkgs.linkFarm
+    "allComponents"
+    (builtins.map
+      (x: { name = x.name; path = x; })
+      (pkgs.haskell-nix.haskellLib.getAllComponents butcher));
+
   shell = hsPkgs.shellFor {
     # Include only the *local* packages of your project.
     packages = ps: with ps; [
